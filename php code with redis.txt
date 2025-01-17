@@ -1,0 +1,89 @@
+<?php
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
+echo "<h1>Region: Mumbai</h1>";
+
+// Database connection settings for MySQL
+$mysql_host = 'database_host';
+$mysql_dbname = 'dbname';
+$mysql_username = 'username';
+$mysql_password = 'password';
+
+// Connect to RDS MySQL
+$mysql_conn = new mysqli($mysql_host, $mysql_username, $mysql_password, $mysql_dbname);
+
+// Check MySQL connection
+if ($mysql_conn->connect_error) {
+    die("MySQL connection failed: " . $mysql_conn->connect_error);
+}
+echo "<h2>[+] Connected successfully to the MySQL database.</h2>";
+
+// Connecting to AWS ElastiCache Redis
+$redis_host = 'elasticache_host';
+$redis_port = 6379;
+
+// Create a Redis instance
+$redis = new Redis();
+
+try {
+    // Connect to Redis
+    $redis->connect($redis_host, $redis_port);
+    echo "<h2>[+] Connected successfully to Redis.</h2>";
+
+    // Define cache key
+    $cacheKey = 'users_data';
+
+    // Start timing for Redis fetch
+    $redisStartTime = microtime(true);
+
+    // Attempt to fetch data from Redis
+    $cachedData = $redis->get($cacheKey);
+    $redisEndTime = microtime(true);
+
+    // Calculate time taken to fetch data from Redis
+    $redisFetchTime = $redisEndTime - $redisStartTime;
+
+    if ($cachedData !== false) {
+        // If the data is found in Redis, decode it and use it
+        $data = json_decode($cachedData, true);
+        echo "<h2>[+]Data retrieved from Redis in " . round($redisFetchTime, 4) . " seconds:</h2>";
+    } else {
+        // If data is not in Redis, fetch from MySQL
+        echo "<h2>[+]No data found in Redis. Fetching from MySQL...</h2>";
+
+        // Start timing for MySQL query execution
+        $mysqlStartTime = microtime(true);
+        $mysql_query = "SELECT * FROM users";
+        $mysql_result = $mysql_conn->query($mysql_query);
+        $mysqlEndTime = microtime(true);
+        $mysqlTime = $mysqlEndTime - $mysqlStartTime;
+
+        // Check if MySQL query execution was successful
+        if ($mysql_result) {
+            $data = array();
+            while ($row = $mysql_result->fetch_assoc()) {
+                $data[] = $row;
+            }
+            echo "<h2>[+]Data retrieved from MySQL in " . round($mysqlTime, 4) . " seconds:</h2>";
+
+            // Save the fetched data to Redis
+            $redis->set($cacheKey, json_encode($data));
+            echo "<h2>[+] Data saved to Redis</h2>";
+        } else {
+            echo "Error executing MySQL query: " . $mysql_conn->error;
+            $mysql_conn->close();
+            exit;
+        }
+    }
+
+    // Print the data
+    print_r($data);
+
+} catch (Exception $e) {
+    echo "Redis connection failed: " . $e->getMessage();
+}
+
+// Disconnect from MySQL
+$mysql_conn->close();
+?>

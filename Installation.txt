@@ -1,0 +1,52 @@
+#INSTALL FOLLOWING:
+sudo apt update
+sudo apt install redis-server -y
+sudo systemctl start redis.service
+sudo apt install php php-cli php-pear php-dev -y
+sudo apt install apache2 -y
+
+# install mysql for php
+sudo apt install php php-mysql -y
+sudo apt install mysql-server -y
+
+# install redis server and redis extension for php
+sudo apt install redis-server -y
+sudo apt-get install php-redis -y
+
+# To install the PHP Redis extension, you will use pecl:
+sudo pecl install redis
+
+#find php.ini and add "extension=redis.so" at the end of file
+$ php --ini
+Configuration File (php.ini) Path: /etc/php/8.3/cli
+Loaded Configuration File:         /etc/php/8.3/cli/php.ini
+
+$ sudo nano /etc/php/8.3/cli/php.ini
+
+#verfiy if redis is installed
+php -m | grep redis
+
+#install redis cli and test connection to you redis server
+$ redis-cli -h <elasticache endpoint url> -p 6379
+
+ex: redis-cli -h my-cache1.49cvot.ng.0001.use1.cache.amazonaws.com -p 6379
+
+#flushing all the cache store in the redis
+$ my-cache1.49cvot.ng.0001.use1.cache.amazonaws.com:6379> FLUSHALL
+OK
+
+#connect to local redis
+$ redis-cli
+127.0.0.1:6379> 
+
+$ redis-cli -h localhost -p 6379
+localhost:6379> 
+
+[test.php to check if redis extension for php is available or not]
+<?php
+if (class_exists('Redis')) {
+    echo "Redis class is available!";
+} else {
+    echo "Redis class is NOT available!";
+}
+?>
